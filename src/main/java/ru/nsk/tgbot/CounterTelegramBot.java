@@ -2,6 +2,7 @@ package ru.nsk.tgbot;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -9,6 +10,8 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.nsk.tgbot.components.Buttons;
 import ru.nsk.tgbot.config.BotConfig;
+import ru.nsk.tgbot.database.User;
+import ru.nsk.tgbot.database.UserRepository;
 
 import static ru.nsk.tgbot.components.BotCommands.HELP_TEXT;
 
@@ -16,6 +19,8 @@ import static ru.nsk.tgbot.components.BotCommands.HELP_TEXT;
 @Component
 
 public class CounterTelegramBot extends TelegramLongPollingBot {
+
+    private UserRepository userRepository;
 
     final BotConfig config;
 
@@ -55,8 +60,12 @@ public class CounterTelegramBot extends TelegramLongPollingBot {
                 userId = update.getCallbackQuery().getFrom().getId();
                 userName = update.getCallbackQuery().getFrom().getFirstName();
                 receivedMessage = update.getCallbackQuery().getData();
+
                 botAnswerUtils(receivedMessage,chatId,userId);
             }
+        if (chatId == Long.parseLong(config.getChatId())){
+            updateDB(userId, userName);
+        }
             }
 
     private void botAnswerUtils(String receivedMessage, long chatId, long userName){
@@ -74,7 +83,7 @@ public class CounterTelegramBot extends TelegramLongPollingBot {
     private void startBot(Long chatId, long userName){
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Hello, " + userName + "! This is Benjamin Laynus.");
+        message.setText("Hello AlEX_BOREIUS_OFFICAL you id, " + userName + "! This is Benjamin Laynus.");
         message.setReplyMarkup(Buttons.inlineMarkup());
 
         try {
@@ -100,5 +109,17 @@ private void sendHelpText(long chatId, String textToSend){
     }
 }
 
+ private void updateDB(long userId, String userName){
+        if(userRepository.findById(userId).isEmpty()){
+            User user = new User();
+            user.setId(userId);
+            user.setName(userName);
+            user.setMsg_numb(1);
+            userRepository.save(user);
+            log.info("Added to DB: " + user);
+        }else{
+            userRepository.updateMsgNumberByUserId(userId);
+        }
+ }
 
 }
