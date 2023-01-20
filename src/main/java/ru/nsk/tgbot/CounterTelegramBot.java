@@ -2,15 +2,15 @@ package ru.nsk.tgbot;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import ru.nsk.tgbot.components.Buttons;
 import ru.nsk.tgbot.config.BotConfig;
 
-import java.util.List;
+import static ru.nsk.tgbot.components.BotCommands.HELP_TEXT;
 
 @Slf4j
 @Component
@@ -36,24 +36,46 @@ public class CounterTelegramBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(@NotNull Update update) {
+        long chatId = 0;
+        long userId =0;
+        String userName = null;
+        String receivedMessage;
 
-        if(update.hasMessage() && update.getMessage().hasText()){
-            String messageText = update.getMessage().getText();
-            Long chatId = update.getMessage().getChatId();
-            String memberName = update.getMessage().getFrom().getFirstName();
-            switch (messageText){
-                case "/start":
-                    startBot(chatId, memberName);
-                    break;
-                default: log.info("Unexpected message");
+        if(update.hasMessage()){
+            chatId = update.getMessage().getChatId();
+            userId = update.getMessage().getFrom().getId();
+            userName = update.getMessage().getFrom().getFirstName();
+
+            if(update.getMessage().hasText()) {
+                receivedMessage = update.getMessage().getText();
+                botAnswerUtils(receivedMessage, chatId, userId);
             }
+            }else if(update.hasCallbackQuery()){
+                chatId = update.getCallbackQuery().getMessage().getChatId();
+                userId = update.getCallbackQuery().getFrom().getId();
+                userName = update.getCallbackQuery().getFrom().getFirstName();
+                receivedMessage = update.getCallbackQuery().getData();
+                botAnswerUtils(receivedMessage,chatId,userId);
+            }
+            }
+
+    private void botAnswerUtils(String receivedMessage, long chatId, long userName){
+        switch (receivedMessage){
+            case "/start":
+                startBot(chatId,userName);
+                break;
+            case "/help":
+                sendHelpText(chatId, HELP_TEXT);
+                break;
+            default:break;
         }
     }
 
-    private void startBot(Long chatId,String userName){
+    private void startBot(Long chatId, long userName){
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText("Hello, " + userName + "! This is Benjamin Laynus.");
+        message.setReplyMarkup(Buttons.inlineMarkup());
 
         try {
             execute(message);
@@ -64,7 +86,19 @@ public class CounterTelegramBot extends TelegramLongPollingBot {
 
     }
 
+private void sendHelpText(long chatId, String textToSend){
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(textToSend);
 
+    try {
+        execute(message);
+        log.info("Reply sent");
+
+    } catch (TelegramApiException e) {
+        log.error(e.getMessage());
+    }
+}
 
 
 }
